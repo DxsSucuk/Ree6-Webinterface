@@ -140,8 +140,8 @@ public class Main extends NanoHTTPD {
                             "               </div>\n" +
                             "               <div class=\"col-md-4\">\n" +
                             "                  <h4 class=\"text-uppercase mb-4\">Special Links</h4>\n" +
-                            "                  <p class=\"lead mb-0\"><a href=\"ree6.de/inforeq.html\" target = \"_blank\">Data Information Request</a></p>\n" +
-                            "                  <p class=\"lead mb-0\"><a href=\"ree6.de/deletereq.html\" target = \"_blank\">Data Remove Request</a></p>\n" +
+                            "                  <p class=\"lead mb-0\"><a href=\"https://ree6.de/inforeq.html\" target = \"_blank\">Data Information Request</a></p>\n" +
+                            "                  <p class=\"lead mb-0\"><a href=\"https://ree6.de/deletereq.html\" target = \"_blank\">Data Remove Request</a></p>\n" +
                             "               </div>\n" +
                             "            </div>\n" +
                             "         </div>\n" +
@@ -217,8 +217,8 @@ public class Main extends NanoHTTPD {
                             "               </div>\n" +
                             "               <div class=\"col-md-4\">\n" +
                             "                  <h4 class=\"text-uppercase mb-4\">Special Links</h4>\n" +
-                            "                  <p class=\"lead mb-0\"><a href=\"ree6.de/inforeq.html\" target = \"_blank\">Data Information Request</a></p>\n" +
-                            "                  <p class=\"lead mb-0\"><a href=\"ree6.de/deletereq.html\" target = \"_blank\">Data Remove Request</a></p>\n" +
+                            "                  <p class=\"lead mb-0\"><a href=\"https://ree6.de/inforeq.html\" target = \"_blank\">Data Information Request</a></p>\n" +
+                            "                  <p class=\"lead mb-0\"><a href=\"https://ree6.de/deletereq.html\" target = \"_blank\">Data Remove Request</a></p>\n" +
                             "               </div>\n" +
                             "            </div>\n" +
                             "         </div>\n" +
@@ -361,8 +361,8 @@ public class Main extends NanoHTTPD {
                 "               </div>\n" +
                 "               <div class=\"col-md-4\">\n" +
                 "                  <h4 class=\"text-uppercase mb-4\">Special Links</h4>\n" +
-                "                  <p class=\"lead mb-0\"><a href=\"ree6.de/inforeq.html\" target = \"_blank\">Data Information Request</a></p>\n" +
-                "                  <p class=\"lead mb-0\"><a href=\"ree6.de/deletereq.html\" target = \"_blank\">Data Remove Request</a></p>\n" +
+                "                  <p class=\"lead mb-0\"><a href=\"https://ree6.de/inforeq.html\" target = \"_blank\">Data Information Request</a></p>\n" +
+                "                  <p class=\"lead mb-0\"><a href=\"https://ree6.de/deletereq.html\" target = \"_blank\">Data Remove Request</a></p>\n" +
                 "               </div>\n" +
                 "            </div>\n" +
                 "         </div>\n" +
