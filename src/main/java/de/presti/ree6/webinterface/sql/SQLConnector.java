@@ -1,7 +1,6 @@
 package de.presti.ree6.webinterface.sql;
 
 import de.presti.ree6.webinterface.main.Main;
-import de.presti.ree6.webinterface.main.OldMain;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

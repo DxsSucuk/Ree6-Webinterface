@@ -660,7 +660,6 @@ public class SQLWorker {
     }
 
     //ChatProtector
-
     public boolean hasChatProtectorSetuped(String gid) {
         try {
             PreparedStatement st;
@@ -699,14 +698,14 @@ public class SQLWorker {
 
 
     public void addChatProtector(String gid, String word) {
-        if (hasChatProtectorSetuped(gid)) {
+        if (hasChatProtectorWord(gid, word)) {
             Main.sqlConnector.query("DELETE FROM ChatProtector WHERE GID='" + gid + "' AND WORD='" + word + "'");
         }
         Main.sqlConnector.query("INSERT INTO ChatProtector (GID, WORD) VALUES ('" + gid + "', '" + word + "');");
     }
 
     public void removeChatProtector(String gid, String word) {
-        if (hasChatProtectorSetuped(gid)) {
+        if (hasChatProtectorWord(gid, word)) {
             Main.sqlConnector.query("DELETE FROM ChatProtector WHERE GID='" + gid + "' AND WORD='" + word + "'");
         }
     }

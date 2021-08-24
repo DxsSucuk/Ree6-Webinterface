@@ -122,74 +122,62 @@ public class Main extends NanoHTTPD {
             if (message.length() < 250) {
                 sqlWorker.setMessage(getGuildID(session), message);
             }
+        } else if (isLoggedin && parms.get("addwords") != null) {
+            String words = parms.get("addwords").replace("%25", "%").replace("+", " ").replace("%2C", ",");
+
+            if (words.contains(",")) {
+                String[] splits = words.split(",");
+                for (String word : splits) {
+                    Main.sqlWorker.addChatProtector(getGuildID(session), word);
+                }
+            } else {
+                Main.sqlWorker.addChatProtector(getGuildID(session), words);
+            }
+        } else if (isLoggedin && parms.get("removeword") != null) {
+            String word = parms.get("removeword").replace("%25", "%").replace("+", " ").replace("%2C", ",");
+            Main.sqlWorker.removeChatProtector(getGuildID(session), word);
         }
 
-        if (session.getUri().startsWith("/logout")) {
+        body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
+                "         <div class=\"container\">\n" +
+                "            <a class=\"navbar-brand js-scroll-trigger\">Ree6</a><button data-toggle=\"collapse\" data-target=\"#navbarResponsive\" class=\"navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded\" aria-controls=\"navbarResponsive\"\n" +
+                "               aria-expanded=\"false\" aria-label=\"Toggle navigation\"><i class=\"fa fa-bars\"></i></button>\n" +
+                "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
+                "               <ul class=\"nav navbar-nav ml-auto\">\n" +
+                "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
+                "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
+                "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
+                "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
+                "               </ul>\n" +
+                "            </div>\n" +
+                "         </div>\n" +
+                "      </nav>\n" +
+                "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
+                "         <h1>Ree6</h1>\n" +
+                "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
+                "      </header>";
 
-            //Logout
+        if (loginFailed) {
 
-            body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
-                    "         <div class=\"container\">\n" +
-                    "            <a class=\"navbar-brand js-scroll-trigger\">Ree6</a><button data-toggle=\"collapse\" data-target=\"#navbarResponsive\" class=\"navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded\" aria-controls=\"navbarResponsive\"\n" +
-                    "               aria-expanded=\"false\" aria-label=\"Toggle navigation\"><i class=\"fa fa-bars\"></i></button>\n" +
-                    "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
-                    "               <ul class=\"nav navbar-nav ml-auto\">\n" +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
-                    "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
-                    "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
-                    "               </ul>\n" +
-                    "            </div>\n" +
-                    "         </div>\n" +
-                    "      </nav>\n" +
-                    "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
-                    "         <h1>Ree6</h1>\n" +
-                    "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
-                    "      </header>" +
-                    "      <section id = \"confirm\" class = \"bg-tertiary\">\n" +
-                    "        <h1 class=\"text-center text-secondary\">" + "Are you sure that you want to logout?" + "<h1/>\n" +
+            //Login Failed Page
+
+            body += "      <section id = \"loginfail\" class = \"bg-tertiary\">\n" +
+                    "        <h1 class=\"text-center text-secondary\">Invalid LoginKey!<h1/>\n" +
+                    "          <p class=\"lead mb-4 text-center\">The given LoginKey is invalid! Please Generate a new one!</p>\n" +
                     "          <div class=\"container\">\n" +
                     "            <div class=\"text-center mt-4\">\n" +
-                    "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/?logout=confirm\">Confirm Logout</a></p>\n" +
-                    "               <br />\n" +
-                    "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go back</a></p>\n" +
+                    "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go Home</a></p>\n" +
                     "            </div>\n" +
                     "         </div>\n" +
                     "      </section>";
-        } else if (session.getUri().startsWith("/logging")) {
+        } else if (isLoggedin) {
 
-            //Logging
+            //Login Success Pages
 
-            body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
-                    "         <div class=\"container\">\n" +
-                    "            <a class=\"navbar-brand js-scroll-trigger\">Ree6</a><button data-toggle=\"collapse\" data-target=\"#navbarResponsive\" class=\"navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded\" aria-controls=\"navbarResponsive\"\n" +
-                    "               aria-expanded=\"false\" aria-label=\"Toggle navigation\"><i class=\"fa fa-bars\"></i></button>\n" +
-                    "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
-                    "               <ul class=\"nav navbar-nav ml-auto\">\n" +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
-                    "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
-                    "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
-                    "               </ul>\n" +
-                    "            </div>\n" +
-                    "         </div>\n" +
-                    "      </nav>\n" +
-                    "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
-                    "         <h1>Ree6</h1>\n" +
-                    "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
-                    "      </header>";
+            if (session.getUri().startsWith("/logging")) {
 
-            if (loginFailed) {
-                body += "      <section id = \"loginfail\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">Invalid LoginKey!<h1/>\n" +
-                        "          <p class=\"lead mb-4 text-center\">The given LoginKey is invalid! Please Generate a new one!</p>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go Home</a></p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
-            } else if (isLoggedin) {
+                //Logging Panel
+
                 body += "      <section id = \"panel\" class = \"bg-tertiary\">\n" +
                         "         <h2 class=\"text-uppercase text-center text-secondary\">Logging</h2>\n" +
                         "         <hr class=\"bolt-dark mb-5\">\n" +
@@ -211,50 +199,10 @@ public class Main extends NanoHTTPD {
                 body += "            </div>\n" +
                         "         </div>\n" +
                         "      </section>";
-            } else {
-                body += "      <section id = \"nologin\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-4 text-center\">Please log yourself in by using the Command ree!webinterface!</p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
-            }
-        } else if (session.getUri().startsWith("/moderation")) {
+            } else if (session.getUri().startsWith("/moderation")) {
 
-            //Moderation
+                //Moderation Panel
 
-            body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
-                    "         <div class=\"container\">\n" +
-                    "            <a class=\"navbar-brand js-scroll-trigger\">Ree6</a><button data-toggle=\"collapse\" data-target=\"#navbarResponsive\" class=\"navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded\" aria-controls=\"navbarResponsive\"\n" +
-                    "               aria-expanded=\"false\" aria-label=\"Toggle navigation\"><i class=\"fa fa-bars\"></i></button>\n" +
-                    "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
-                    "               <ul class=\"nav navbar-nav ml-auto\">\n" +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
-                    "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
-                    "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
-                    "               </ul>\n" +
-                    "            </div>\n" +
-                    "         </div>\n" +
-                    "      </nav>\n" +
-                    "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
-                    "         <h1>Ree6</h1>\n" +
-                    "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
-                    "      </header>";
-
-            if (loginFailed) {
-                body += "      <section id = \"loginfail\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">Invalid LoginKey!<h1/>\n" +
-                        "          <p class=\"lead mb-4 text-center\">The given LoginKey is invalid! Please Generate a new one!</p>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go Home</a></p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
-            } else if (isLoggedin) {
                 body += "      <section id = \"panel\" class = \"bg-tertiary\">\n" +
                         "         <h2 class=\"text-uppercase text-center text-secondary\">Moderation</h2>\n" +
                         "         <hr class=\"bolt-dark mb-5\">\n" +
@@ -276,7 +224,39 @@ public class Main extends NanoHTTPD {
                 body += "<div class=\"col-md-6 col-lg-4\">\n" +
                         "   <h1>Log-Channel</h1>\n" +
                         "   <br  />\n" +
-                        "   <p class=\"lead mb-4\">Setuped: "  + (Main.sqlWorker.hasLogSetuped(getGuildID(session)) ? "yes" : "no") +  "<br/>To change this settings use ree!setup log #Channel</p>\n" +
+                        "   <p class=\"lead mb-4\">Setuped: " + (Main.sqlWorker.hasLogSetuped(getGuildID(session)) ? "yes" : "no") + "<br/>To change this settings use ree!setup log #Channel</p>\n" +
+                        "</div>";
+
+                body += "<div class=\"col-md-6 col-lg-4\">\n" +
+                        "   <h1>Word-Blacklist</h1>\n" +
+                        "   <br  />\n" +
+                        "   <h4>Blacklisted Words:</h4>" +
+                        "   <p class=\"lead mb-4 text-center\">";
+
+                if (!Main.sqlWorker.getChatProtector(getGuildID(session)).isEmpty()) {
+                    int i = 0;
+                    int j = 0;
+                    for (String words : Main.sqlWorker.getChatProtector(getGuildID(session))) {
+                        if (i == 2) {
+                            body += words + " <a class=\"lead mb-4\" href=\"moderation/?removeword=" + words + "\">&#10060;</a>";
+                            body += "<br  />";
+                            i = 0;
+                        } else {
+                            body += words + " <a class=\"lead mb-4\" href=\"moderation/?removeword=" + words + "\">&#10060;</a>" + (j != (Main.sqlWorker.getChatProtector(getGuildID(session)).size() - 1) ? "   |   " : "");
+                            i++;
+                        }
+                        j++;
+                    }
+                } else {
+                    body += "Empty";
+                }
+
+                body += "</p>\n" +
+                        "   <form action=\"/moderation/\" method=\"get\">\n" +
+                        "      <label class=\"lead mb-4\" for=\"addwords\">Words:</label>\n" +
+                        "      <input class=\"outline-light bg-secondary text-primary\" type=\"text\" id=\"addwords\" name=\"addwords\">\n" +
+                        "      <input class=\"btn btn-outline-dark text-center\" type=\"submit\" value=\"Add\">\n" +
+                        "   </form>" +
                         "</div>";
 
                 body += "            </div>\n" +
@@ -304,50 +284,10 @@ public class Main extends NanoHTTPD {
                 body += "            </div>\n" +
                         "         </div>\n" +
                         "      </section>";
-            } else {
-                body += "      <section id = \"nologin\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-4 text-center\">Please log yourself in by using the Command ree!webinterface!</p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
-            }
-        } else if (session.getUri().startsWith("/social")) {
+            } else if (session.getUri().startsWith("/social")) {
 
-            //Social
+                //Social Panel
 
-            body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
-                    "         <div class=\"container\">\n" +
-                    "            <a class=\"navbar-brand js-scroll-trigger\">Ree6</a><button data-toggle=\"collapse\" data-target=\"#navbarResponsive\" class=\"navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded\" aria-controls=\"navbarResponsive\"\n" +
-                    "               aria-expanded=\"false\" aria-label=\"Toggle navigation\"><i class=\"fa fa-bars\"></i></button>\n" +
-                    "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
-                    "               <ul class=\"nav navbar-nav ml-auto\">\n" +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
-                    "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
-                    "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
-                    "               </ul>\n" +
-                    "            </div>\n" +
-                    "         </div>\n" +
-                    "      </nav>\n" +
-                    "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
-                    "         <h1>Ree6</h1>\n" +
-                    "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
-                    "      </header>";
-
-            if (loginFailed) {
-                body += "      <section id = \"loginfail\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">Invalid LoginKey!<h1/>\n" +
-                        "          <p class=\"lead mb-4 text-center\">The given LoginKey is invalid! Please Generate a new one!</p>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go Home</a></p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
-            } else if (isLoggedin) {
                 body += "      <section id = \"panel\" class = \"bg-tertiary\">\n" +
                         "         <h2 class=\"text-uppercase text-center text-secondary\">Social</h2>\n" +
                         "         <hr class=\"bolt-dark mb-5\">\n" +
@@ -392,47 +332,25 @@ public class Main extends NanoHTTPD {
                 body += "            </div>\n" +
                         "         </div>\n" +
                         "      </section>";
-            } else {
-                body += "      <section id = \"nologin\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-4 text-center\">Please log yourself in by using the Command ree!webinterface!</p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
-            }
-        } else {
-            body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
-                    "         <div class=\"container\">\n" +
-                    "            <a class=\"navbar-brand js-scroll-trigger\">Ree6</a><button data-toggle=\"collapse\" data-target=\"#navbarResponsive\" class=\"navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded\" aria-controls=\"navbarResponsive\"\n" +
-                    "               aria-expanded=\"false\" aria-label=\"Toggle navigation\"><i class=\"fa fa-bars\"></i></button>\n" +
-                    "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
-                    "               <ul class=\"nav navbar-nav ml-auto\">\n" +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
-                    "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
-                    "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
-                    "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
-                    "               </ul>\n" +
-                    "            </div>\n" +
-                    "         </div>\n" +
-                    "      </nav>\n" +
-                    "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
-                    "         <h1>Ree6</h1>\n" +
-                    "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
-                    "      </header>";
+            } else if (session.getUri().startsWith("/logout")) {
 
-            if (loginFailed) {
-                body += "      <section id = \"loginfail\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">Invalid LoginKey!<h1/>\n" +
-                        "          <p class=\"lead mb-4 text-center\">The given LoginKey is invalid! Please Generate a new one!</p>\n" +
+                //Logout Page
+
+                body += "      <section id = \"confirm\" class = \"bg-tertiary\">\n" +
+                        "        <h1 class=\"text-center text-secondary\">" + "Are you sure that you want to logout?" + "<h1/>\n" +
+                        "        <br  />\n" +
                         "          <div class=\"container\">\n" +
                         "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go Home</a></p>\n" +
+                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/?logout=confirm\">Confirm Logout</a></p>\n" +
+                        "               <br  />\n" +
+                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go back</a></p>\n" +
                         "            </div>\n" +
                         "         </div>\n" +
                         "      </section>";
-            } else if (isLoggedin) {
+            } else {
+
+                //Main Page
+
                 body += "      <section id = \"panel\" class = \"bg-tertiary\">\n" +
                         "         <h2 class=\"text-uppercase text-center text-secondary\">Control-Panels</h2>\n" +
                         "         <hr class=\"bolt-dark mb-5\">\n" +
@@ -461,35 +379,37 @@ public class Main extends NanoHTTPD {
                         "            </div>\n" +
                         "         </div>\n" +
                         "      </section>";
-            } else {
-                body += "      <section id = \"nologin\" class = \"bg-tertiary\">\n" +
-                        "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
-                        "          <div class=\"container\">\n" +
-                        "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-4 text-center\">Please log yourself in by using the Command ree!webinterface!</p>\n" +
-                        "            </div>\n" +
-                        "         </div>\n" +
-                        "      </section>";
             }
+        } else {
 
+            //Not Loggedin Page
+
+            body += "      <section id = \"nologin\" class = \"bg-tertiary\">\n" +
+                    "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
+                    "          <div class=\"container\">\n" +
+                    "            <div class=\"text-center mt-4\">\n" +
+                    "               <p class=\"lead mb-4 text-center\">Please log yourself in by using the Command ree!webinterface!</p>\n" +
+                    "            </div>\n" +
+                    "         </div>\n" +
+                    "      </section>";
         }
 
         return newFixedLengthResponse(head + body + foot);
     }
 
 
-    public String getFromArray(ArrayList<String> d) {
+    public String getFromArray(ArrayList<String> arrayList) {
         String end = "";
 
-        if (d.isEmpty()) {
-            return "Empty (maybe not setuped)";
+        if (arrayList.isEmpty()) {
+            return "Empty";
         }
 
-        int kk = 0;
-        for (String s : d) {
-            if (kk != (d.size() - 1)) {
+        int i = 0;
+        for (String s : arrayList) {
+            if (i != (arrayList.size() - 1)) {
                 end += s + ", ";
-                kk++;
+                i++;
             } else {
                 end += s;
             }
