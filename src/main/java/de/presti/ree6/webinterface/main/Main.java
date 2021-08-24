@@ -145,7 +145,7 @@ public class Main extends NanoHTTPD {
                 "            <div class=\"collapse navbar-collapse\" id=\"navbarResponsive\">\n" +
                 "               <ul class=\"nav navbar-nav ml-auto\">\n" +
                 "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
-                "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"logout/?logout\">Logout</a></li>\n" : "") +
+                "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/logout/?logout\">Logout</a></li>\n" : "") +
                 "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
                 "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
                 "               </ul>\n" +
@@ -238,11 +238,11 @@ public class Main extends NanoHTTPD {
                     int j = 0;
                     for (String words : Main.sqlWorker.getChatProtector(getGuildID(session))) {
                         if (i == 2) {
-                            body += words + " <a class=\"lead mb-4\" href=\"moderation/?removeword=" + words + "\">&#10060;</a>";
+                            body += words + " <a class=\"lead mb-4\" href=\"/moderation/?removeword=" + words + "\">&#10060;</a>";
                             body += "<br  />";
                             i = 0;
                         } else {
-                            body += words + " <a class=\"lead mb-4\" href=\"moderation/?removeword=" + words + "\">&#10060;</a>" + (j != (Main.sqlWorker.getChatProtector(getGuildID(session)).size() - 1) ? "   |   " : "");
+                            body += words + " <a class=\"lead mb-4\" href=\"/moderation/?removeword=" + words + "\">&#10060;</a>" + (j != (Main.sqlWorker.getChatProtector(getGuildID(session)).size() - 1) ? "   |   " : "");
                             i++;
                         }
                         j++;
@@ -341,7 +341,7 @@ public class Main extends NanoHTTPD {
                         "        <br  />\n" +
                         "          <div class=\"container\">\n" +
                         "            <div class=\"text-center mt-4\">\n" +
-                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/?logout=confirm\">Confirm Logout</a></p>\n" +
+                        "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/logout/?logout=confirm\">Confirm Logout</a></p>\n" +
                         "               <br  />\n" +
                         "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"/\">Go back</a></p>\n" +
                         "            </div>\n" +
