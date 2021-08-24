@@ -21,6 +21,7 @@ public class Config {
             cfg.addDefault("mysql.pw", "yourpw");
             cfg.addDefault("mysql.host", "localhost");
             cfg.addDefault("mysql.port", 3306);
+            cfg.addDefault("discordapi.token", "");
 
             try {
                 cfg.save(getFile());
