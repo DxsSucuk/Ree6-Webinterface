@@ -276,7 +276,7 @@ public class Main extends NanoHTTPD {
                                 "                  <h1>" + (settings.getKey().replace("command_", "").charAt(0) + "").toUpperCase() + settings.getKey().replace("command_", "").substring(1).toLowerCase() + "</h1>\n" +
                                 "                  <br  />\n" +
                                 "                  <p class=\"lead mb-4\">Currently: " + (settings.getValue() ? "active!" : "disabled!") + "</p>\n" +
-                                "                  <p class=\"lead mb-4\"><a class=\"btn btn-outline-dark text-center\" role=\"button\" href = \"/logging/?name=" + settings.getKey() + "&value=" + !settings.getValue() + "\">Change</a></p>\n" +
+                                "                  <p class=\"lead mb-4\"><a class=\"btn btn-outline-dark text-center\" role=\"button\" href = \"/moderation/?name=" + settings.getKey() + "&value=" + !settings.getValue() + "\">Change</a></p>\n" +
                                 "               </div>\n";
                     }
                 }
