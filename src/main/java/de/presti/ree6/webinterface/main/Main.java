@@ -445,7 +445,7 @@ public class Main extends NanoHTTPD {
 
     public static String getAvatarUrl(String userID) {
         JSONObject js = JSONApi.GetData(Requests.GET, "https://discord.com/api/users/" + userID, "Bot " + Main.config.getConfig().getString("discordapi.token"));
-        return (js.has("avatar") ? "https://cdn.discordapp.com/avatars/" + userID + "/" + js.getString("avatar") : "https://preview.redd.it/nx4jf8ry1fy51.gif?format=png8&s=a5d51e9aa6b4776ca94ebe30c9bb7a5aaaa265a6");
+        return (js.has("avatar") && js.get("avatar") instanceof String ? "https://cdn.discordapp.com/avatars/" + userID + "/" + js.getString("avatar") : "https://preview.redd.it/nx4jf8ry1fy51.gif?format=png8&s=a5d51e9aa6b4776ca94ebe30c9bb7a5aaaa265a6");
     }
 
     public static String getUsername(String userID) {
