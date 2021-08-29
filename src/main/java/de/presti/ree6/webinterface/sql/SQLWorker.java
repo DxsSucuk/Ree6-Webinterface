@@ -3,6 +3,7 @@ package de.presti.ree6.webinterface.sql;
 
 
 import de.presti.ree6.webinterface.main.Main;
+import de.presti.ree6.webinterface.utils.Setting;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -1136,6 +1137,52 @@ public class SQLWorker {
             } catch (Exception ignore) {
             }
 
+            if (rs != null && rs.next()) {
+                return true;
+            } else {
+                checkSettings(gid);
+                return false;
+            }
+
+        } catch (Exception ignore) {
+        }
+
+        checkSettings(gid);
+
+        return false;
+    }
+
+    public void checkSettings(String gid) {
+        try {
+            PreparedStatement st;
+            ResultSet rs = null;
+
+            try {
+                st = Main.sqlConnector.con.prepareStatement("SELECT * FROM Settings WHERE GID='" + gid + "'");
+                rs = st.executeQuery("SELECT * FROM Settings WHERE GID='" + gid + "'");
+            } catch (Exception ignore) {
+            }
+
+            if (rs == null || !rs.next()) {
+                createSettings(gid);
+            }
+
+        } catch (Exception ignore) {
+        }
+    }
+
+    public boolean settingExists(String gid, String settingName) {
+
+        try {
+            PreparedStatement st;
+            ResultSet rs = null;
+
+            try {
+                st = Main.sqlConnector.con.prepareStatement("SELECT * FROM Settings WHERE GID='" + gid + "' AND NAME='" + settingName + "'");
+                rs = st.executeQuery("SELECT * FROM Settings WHERE GID='" + gid + "' AND NAME='" + settingName + "'");
+            } catch (Exception ignore) {
+            }
+
             return rs != null && rs.next();
 
         } catch (Exception ignore) {
@@ -1143,18 +1190,22 @@ public class SQLWorker {
         return false;
     }
 
-    public void setSetting(String gid, String settingName, boolean value) {
-
-        if (hasSetting(gid, settingName))
-            Main.sqlConnector.query("UPDATE Settings SET VALUE='" + value + "' WHERE GID='" + gid + "' AND NAME='" + settingName + "'");
-        else
-            Main.sqlConnector.query("INSERT INTO Settings (GID, NAME, VALUE) VALUES ('" + gid + "', '" + settingName + "', '" + value + "');");
+    public void setSetting(String gid, String name, Object value) {
+        setSetting(gid, new Setting(name, value));
     }
 
-    public Boolean getSetting(String gid, String settingName) {
-        boolean value = false;
+    public void setSetting(String gid, Setting setting) {
 
-        if (!hasSetting(gid, settingName)) return false;
+        if (settingExists(gid, setting.getName()))
+            Main.sqlConnector.query("UPDATE Settings SET VALUE='" + setting.getStringValue() + "' WHERE GID='" + gid + "' AND NAME='" + setting.getName() + "'");
+        else
+            Main.sqlConnector.query("INSERT INTO Settings (GID, NAME, VALUE) VALUES ('" + gid + "', '" + setting.getName() + "', '" + setting.getStringValue() + "');");
+    }
+
+    public Setting getSetting(String gid, String settingName) {
+        Object value = null;
+
+        if (!hasSetting(gid, settingName)) new Setting(gid, true);
 
         try {
             PreparedStatement st;
@@ -1166,15 +1217,42 @@ public class SQLWorker {
             } catch (Exception ignore) {}
 
             if (rs != null && rs.next())
-                value = Boolean.parseBoolean(rs.getString("VALUE"));
+                value = rs.getString("VALUE");
 
         } catch (Exception ignore) {}
 
-        return value;
+        return new Setting(settingName, value);
     }
 
-    public ArrayList<Map.Entry<String, Boolean>> getAllSettings(String gid) {
-        ArrayList<Map.Entry<String, Boolean>> list = new ArrayList<>();
+    public void createSettings(String gid) {
+
+        if (!settingExists(gid, "chatprefix")) setSetting(gid, new Setting("chatprefix", "ree!"));
+
+        if (!settingExists(gid, "logging_invite")) setSetting(gid, "logging_invite", true);
+        if (!settingExists(gid, "logging_memberjoin")) setSetting(gid, "logging_memberjoin", true);
+        if (!settingExists(gid, "logging_memberleave")) setSetting(gid, "logging_memberleave", true);
+        if (!settingExists(gid, "logging_memberban")) setSetting(gid, "logging_memberban", true);
+        if (!settingExists(gid, "logging_memberunban")) setSetting(gid, "logging_memberunban", true);
+        if (!settingExists(gid, "logging_nickname")) setSetting(gid, "logging_nickname", true);
+        if (!settingExists(gid, "logging_voicejoin")) setSetting(gid, "logging_voicejoin", true);
+        if (!settingExists(gid, "logging_voicemove")) setSetting(gid, "logging_voicemove", true);
+        if (!settingExists(gid, "logging_voiceleave")) setSetting(gid, "logging_voiceleave", true);
+        if (!settingExists(gid, "logging_roleadd")) setSetting(gid, "logging_roleadd", true);
+        if (!settingExists(gid, "logging_roleremove")) setSetting(gid, "logging_roleremove", true);
+        if (!settingExists(gid, "logging_voicechannel")) setSetting(gid, "logging_voicechannel", true);
+        if (!settingExists(gid, "logging_textchannel")) setSetting(gid, "logging_textchannel", true);
+        if (!settingExists(gid, "logging_rolecreate")) setSetting(gid, "logging_rolecreate", true);
+        if (!settingExists(gid, "logging_roledelete")) setSetting(gid, "logging_roledelete", true);
+        if (!settingExists(gid, "logging_rolename")) setSetting(gid, "logging_rolename", true);
+        if (!settingExists(gid, "logging_rolemention")) setSetting(gid, "logging_rolemention", true);
+        if (!settingExists(gid, "logging_rolehoisted")) setSetting(gid, "logging_rolehoisted", true);
+        if (!settingExists(gid, "logging_rolepermission")) setSetting(gid, "logging_rolepermission", true);
+        if (!settingExists(gid, "logging_rolecolor")) setSetting(gid, "logging_rolecolor", true);
+        if (!settingExists(gid, "logging_messagedelete")) setSetting(gid, "logging_messagedelete", true);
+    }
+
+    public ArrayList<Setting> getAllSettings(String gid) {
+        ArrayList<Setting> list = new ArrayList<>();
 
         try {
             PreparedStatement st;
@@ -1186,24 +1264,7 @@ public class SQLWorker {
             } catch (Exception ignore) {}
 
             while (rs != null && rs.next()) {
-                String name = rs.getString("NAME");
-                Boolean value = Boolean.parseBoolean(rs.getString("VALUE"));
-                list.add(new Map.Entry<String, Boolean>() {
-                    @Override
-                    public String getKey() {
-                        return name;
-                    }
-
-                    @Override
-                    public Boolean getValue() {
-                        return value;
-                    }
-
-                    @Override
-                    public Boolean setValue(Boolean value) {
-                        return value;
-                    }
-                });
+                list.add(new Setting(rs.getString("NAME"), (rs.getString("VALUE").equalsIgnoreCase("true") || rs.getString("VALUE").equalsIgnoreCase("false") ? Boolean.parseBoolean(rs.getString("VALUE")) : rs.getString("VALUE"))));
             }
 
         } catch (Exception ignore) {}

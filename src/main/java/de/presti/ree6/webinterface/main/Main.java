@@ -6,6 +6,7 @@ import de.presti.ree6.webinterface.sql.SQLConnector;
 import de.presti.ree6.webinterface.sql.SQLWorker;
 import de.presti.ree6.webinterface.utils.Config;
 import de.presti.ree6.webinterface.utils.Crypter;
+import de.presti.ree6.webinterface.utils.Setting;
 import fi.iki.elonen.NanoHTTPD;
 import org.json.JSONObject;
 
@@ -87,6 +88,7 @@ public class Main extends NanoHTTPD {
 
         boolean isLoggedin = session.getCookies().read("ree6_login") != null;
         boolean loginFailed = false;
+        boolean logoutSucess = false;
 
         if (isLoggedin) {
             if (!sqlWorker.getAuthToken(getGuildID(session)).equalsIgnoreCase(getAuthToken(session))) {
@@ -114,16 +116,17 @@ public class Main extends NanoHTTPD {
                 }
                 session.getCookies().delete("ree6_login");
                 isLoggedin = false;
+                logoutSucess = true;
             }
         } else if (isLoggedin && parms.get("name") != null && parms.get("value") != null) {
-            sqlWorker.setSetting(getGuildID(session), parms.get("name"), Boolean.parseBoolean(parms.get("value")));
+            sqlWorker.setSetting(getGuildID(session), parms.get("name"), parms.get("value"));
         } else if (isLoggedin && parms.get("welcomemessage") != null) {
-            String message = parms.get("welcomemessage").replace("%25", "%").replace("+", " ");
+            String message = replaceHTMLEncoding(parms.get("welcomemessage"));
             if (message.length() < 250) {
                 sqlWorker.setMessage(getGuildID(session), message);
             }
         } else if (isLoggedin && parms.get("addwords") != null) {
-            String words = parms.get("addwords").replace("%25", "%").replace("+", " ").replace("%2C", ",");
+            String words = replaceHTMLEncoding(parms.get("addwords"));
 
             if (words.contains(",")) {
                 String[] splits = words.split(",");
@@ -134,8 +137,11 @@ public class Main extends NanoHTTPD {
                 Main.sqlWorker.addChatProtector(getGuildID(session), words);
             }
         } else if (isLoggedin && parms.get("removeword") != null) {
-            String word = parms.get("removeword").replace("%25", "%").replace("+", " ").replace("%2C", ",");
+            String word = replaceHTMLEncoding(parms.get("removeword"));
             Main.sqlWorker.removeChatProtector(getGuildID(session), word);
+        } else if (isLoggedin && parms.get("setprefix") != null) {
+            String message = replaceHTMLEncoding(parms.get("setprefix"));
+            Main.sqlWorker.setSetting(getGuildID(session), "chatprefix", message);
         }
 
         body = "  <nav class=\"navbar navbar-light navbar-expand-lg fixed-top bg-secondary text-uppercase\" id=\"mainNav\">\n" +
@@ -184,14 +190,14 @@ public class Main extends NanoHTTPD {
                         "         <div class=\"container\">\n" +
                         "            <div class=\"row\">\n";
 
-                for (Map.Entry<String, Boolean> settings : sqlWorker.getAllSettings(getGuildID(session))) {
-                    if (settings.getKey().toLowerCase().startsWith("logging_")) {
+                for (Setting settings : sqlWorker.getAllSettings(getGuildID(session))) {
+                    if (settings.getName().startsWith("logging_")) {
 
                         body += "               <div class=\"col-md-6 col-lg-4\">\n" +
-                                "                  <h1>" + (settings.getKey().replace("logging_", "").charAt(0) + "").toUpperCase() + settings.getKey().replace("logging_", "").substring(1).toLowerCase() + "</h1>\n" +
+                                "                  <h1>" + (settings.getName().replace("logging_", "").charAt(0) + "").toUpperCase() + settings.getName().replace("logging_", "").substring(1).toLowerCase() + "</h1>\n" +
                                 "                  <br  />\n" +
-                                "                  <p class=\"lead mb-4\">Currently: " + (settings.getValue() ? "active!" : "disabled!") + "</p>\n" +
-                                "                  <p class=\"lead mb-4\"><a class=\"btn btn-outline-dark text-center\" role=\"button\" href = \"/logging/?name=" + settings.getKey() + "&value=" + !settings.getValue() + "\">Change</a></p>\n" +
+                                "                  <p class=\"lead mb-4\">Currently: " + (settings.getBooleanValue() ? "active!" : "disabled!") + "</p>\n" +
+                                "                  <p class=\"lead mb-4\"><a class=\"btn btn-outline-dark text-center\" role=\"button\" href = \"/logging/?name=" + settings.getName() + "&value=" + !settings.getBooleanValue() + "\">Change</a></p>\n" +
                                 "               </div>\n";
                     }
                 }
@@ -225,6 +231,17 @@ public class Main extends NanoHTTPD {
                         "   <h1>Log-Channel</h1>\n" +
                         "   <br  />\n" +
                         "   <p class=\"lead mb-4\">Setuped: " + (Main.sqlWorker.hasLogSetuped(getGuildID(session)) ? "yes" : "no") + "<br/>To change this settings use ree!setup log #Channel</p>\n" +
+                        "</div>";
+
+                body += "<div class=\"col-md-6 col-lg-4\">\n" +
+                        "   <h1>Command Prefix</h1>\n" +
+                        "   <br  />\n" +
+                        "   <h4>Current Prefix: " + Main.sqlWorker.getSetting(getGuildID(session), "chatprefix").getStringValue() + "</h4>" +
+                        "   <form action=\"/moderation/\" method=\"get\">\n" +
+                        "      <label class=\"lead mb-4\" for=\"setprefix\">Prefix:</label>\n" +
+                        "      <input class=\"outline-light bg-secondary text-primary\" type=\"text\" id=\"setprefix\" name=\"setprefix\">\n" +
+                        "      <input class=\"btn btn-outline-dark text-center\" type=\"submit\" value=\"Add\">\n" +
+                        "   </form>" +
                         "</div>";
 
                 body += "<div class=\"col-md-6 col-lg-4\">\n" +
@@ -269,14 +286,14 @@ public class Main extends NanoHTTPD {
                         "         <div class=\"container\">\n" +
                         "            <div class=\"row\">\n";
 
-                for (Map.Entry<String, Boolean> settings : sqlWorker.getAllSettings(getGuildID(session))) {
-                    if (settings.getKey().toLowerCase().startsWith("command_")) {
+                for (Setting settings : sqlWorker.getAllSettings(getGuildID(session))) {
+                    if (settings.getName().toLowerCase().startsWith("command_")) {
 
                         body += "               <div class=\"col-md-6 col-lg-4\">\n" +
-                                "                  <h1>" + (settings.getKey().replace("command_", "").charAt(0) + "").toUpperCase() + settings.getKey().replace("command_", "").substring(1).toLowerCase() + "</h1>\n" +
+                                "                  <h1>" + (settings.getName().replace("command_", "").charAt(0) + "").toUpperCase() + settings.getName().replace("command_", "").substring(1).toLowerCase() + "</h1>\n" +
                                 "                  <br  />\n" +
-                                "                  <p class=\"lead mb-4\">Currently: " + (settings.getValue() ? "active!" : "disabled!") + "</p>\n" +
-                                "                  <p class=\"lead mb-4\"><a class=\"btn btn-outline-dark text-center\" role=\"button\" href = \"/moderation/?name=" + settings.getKey() + "&value=" + !settings.getValue() + "\">Change</a></p>\n" +
+                                "                  <p class=\"lead mb-4\">Currently: " + (settings.getBooleanValue() ? "active!" : "disabled!") + "</p>\n" +
+                                "                  <p class=\"lead mb-4\"><a class=\"btn btn-outline-dark text-center\" role=\"button\" href = \"/moderation/?name=" + settings.getName() + "&value=" + !settings.getBooleanValue() + "\">Change</a></p>\n" +
                                 "               </div>\n";
                     }
                 }
@@ -384,6 +401,12 @@ public class Main extends NanoHTTPD {
 
             //Not Loggedin Page
 
+            if (logoutSucess) {
+                body += "<script>\n" +
+                        "   alert(\"You have been logged out!\")\n" +
+                        "</script>\n";
+            }
+
             body += "      <section id = \"nologin\" class = \"bg-tertiary\">\n" +
                     "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
                     "          <div class=\"container\">\n" +
@@ -451,6 +474,12 @@ public class Main extends NanoHTTPD {
     public static String getUsername(String userID) {
         JSONObject js = JSONApi.GetData(Requests.GET, "https://discord.com/api/users/" + userID, "Bot " + Main.config.getConfig().getString("discordapi.token"));
         return (js.has("username") ? js.getString("username") : "Please reload");
+    }
+
+    public String replaceHTMLEncoding(String query) {
+        return query.replace("+", " ").replaceAll("%20", " ").replaceAll("%21", "!").replaceAll("%22", "\"").replaceAll("%23", "#").replaceAll("%24", "$").replace("%25", "%").replaceAll("%26", "&").replaceAll("%27", "'").replaceAll("%28", "(")
+                .replaceAll("%29", ")").replaceAll("%2B", "+").replaceAll("%2F", "/").replaceAll("%3A", ":").replaceAll("%3B", ";").replaceAll("%3C", "<").replaceAll("%3D", "=").replaceAll("%3E", ">").replaceAll("%3F", "?").replaceAll("%40", "@")
+                .replaceAll("%5B", "[").replaceAll("%5C", "\\").replaceAll("%5D", "]").replaceAll("%5E", "^").replaceAll("%5F", "_").replaceAll("%60", "'").replaceAll("%7B", "{").replace("%7C", "-").replaceAll("%7D", "}").replaceAll("%7E", "~");
     }
 
 }
