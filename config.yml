@@ -1,8 +1,0 @@
-mysql:
-  user: ree6
-  db: ree6
-  pw: -tOzNh_!eEdxr[5U
-  host: localhost
-  port: 3306
-discordapi:
-  token: ODExOTU3MTI4NzMzMzkyOTU2.YC5wAA.yISBlHWUsGVuLDxEet7NMTeAeHI
