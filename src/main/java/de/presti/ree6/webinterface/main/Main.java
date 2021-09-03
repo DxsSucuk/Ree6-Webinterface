@@ -5,9 +5,13 @@ import de.presti.ree6.webinterface.json.Requests;
 import de.presti.ree6.webinterface.sql.SQLConnector;
 import de.presti.ree6.webinterface.sql.SQLWorker;
 import de.presti.ree6.webinterface.utils.Config;
-import de.presti.ree6.webinterface.utils.Crypter;
+import de.presti.ree6.webinterface.utils.SecurityUtil;
 import de.presti.ree6.webinterface.utils.Setting;
 import fi.iki.elonen.NanoHTTPD;
+import io.mokulu.discord.oauth.DiscordAPI;
+import io.mokulu.discord.oauth.DiscordOAuth;
+import io.mokulu.discord.oauth.model.TokensResponse;
+import io.mokulu.discord.oauth.model.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -16,30 +20,55 @@ import java.util.Map;
 
 public class Main extends NanoHTTPD {
 
+    /**
+     * Instances of SQL-Helpers and Config-Helpers.
+     */
     public static SQLConnector sqlConnector;
     public static SQLWorker sqlWorker;
     public static Config config;
+    public static DiscordOAuth discordOAuth;
 
+    /**
+     * Start the NanoHTTPD Server.
+     *
+     * @throws IOException   If the Port is already in use or if it could bind it.
+     */
     public Main() throws IOException {
         super(8080);
         start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
         System.out.println("\nRunning! Point your browsers to http://localhost:8080/ \n");
     }
 
+    /**
+     * Start of the Program.
+     *
+     * @param args     Given start Arguments.
+     */
     public static void main(String[] args) {
         try {
 
+            // Create a new Config Instance.
             config = new Config();
 
+            // Create a new DiscordOAuth Instance.
+            discordOAuth = new DiscordOAuth(config.getConfig().getString("discord.client_id"), config.getConfig().getString("discord.client_secret"),"http://localhost:8080", new String[] { "guilds", "guilds.join", "identify" } );
+
+            // Create a new SQL-Connector Instance.
             sqlConnector = new SQLConnector(config.getConfig().getString("mysql.user"), config.getConfig().getString("mysql.pw"), config.getConfig().getString("mysql.host"), config.getConfig().getString("mysql.db"), config.getConfig().getInt("mysql.port"));
 
+            // Create a new SQL-Worker Instance.
             sqlWorker = new SQLWorker();
+
+            // Start the NanoHTTPD Server.
             new Main();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
+    /**
+     * Default header of the Site.
+     */
     String head = "<html lang=\"de\">\n" +
             "   <head>\n" +
             "      <meta charset=\"utf-8\">\n" +
@@ -53,6 +82,9 @@ public class Main extends NanoHTTPD {
             "   </head>" +
             "   <body id=\"page-top\">";
 
+    /**
+     * Default footer of the Site.
+     */
     String foot = "      <footer class=\"footer text-center\">\n" +
             "         <div class=\"container\">\n" +
             "            <div class=\"row\">\n" +
@@ -79,6 +111,12 @@ public class Main extends NanoHTTPD {
             "   </body>\n" +
             "</html>";
 
+    /**
+     * Called when a new Connection is established.
+     *
+     * @param session The current User Session.
+     * @return Response Returns an HTML Response for the User.
+     */
     @Override
     public Response serve(IHTTPSession session) {
 
@@ -86,46 +124,76 @@ public class Main extends NanoHTTPD {
 
         Map<String, String> parms = session.getParms();
 
-        boolean isLoggedin = session.getCookies().read("ree6_login") != null;
+        boolean isLoggedin = session.getCookies().read("state") != null || session.getCookies().read("2oauth") != null;
         boolean loginFailed = false;
-        boolean logoutSucess = false;
+        boolean logoutSuccess = false;
 
-        if (isLoggedin) {
-            if (!sqlWorker.getAuthToken(getGuildID(session)).equalsIgnoreCase(getAuthToken(session))) {
-                session.getCookies().delete("ree6_login");
+        if (session.getCookies().read("state") == null) {
+            session.getCookies().set("state", SecurityUtil.en(SecurityUtil.randomString(50)), 7);
+        }
+
+        if (parms.get("code") != null && parms.get("state") != null) {
+            if (checkForCSRF(parms.get("state"), session)) {
+                if (session.getCookies().read("ree6_login") != null) {
+                    session.getCookies().delete("ree6_login");
+                }
+
+                if (session.getCookies().read("2oauth") != null && !session.getCookies().read("2oauth").equals( SecurityUtil.en(parms.get("code")))) {
+                    session.getCookies().delete("2oauth");
+                }
+
+                session.getCookies().set("2oauth", SecurityUtil.en(parms.get("code")), 7);
+                isLoggedin = true;
+            } else {
+                session.getCookies().delete("state");
+                session.getCookies().delete("2oauth");
+                session.getCookies().delete("auth");
                 isLoggedin = false;
                 loginFailed = true;
             }
         }
 
-        if (!isLoggedin && parms.get("login") != null) {
-            if (!parms.get("login").isEmpty()) {
-                if (sqlWorker.getAuthToken(getGuildID(parms.get("login"))).equalsIgnoreCase(getAuthToken(parms.get("login")))) {
-                    session.getCookies().set("ree6_login", parms.get("login"), (Integer.MAX_VALUE));
-                    isLoggedin = true;
-                    loginFailed = false;
+        if (isLoggedin) {
+            // Check if a Cookies are saved.
+            if (session.getCookies().read("2oauth") != null && session.getCookies().read("state") != null) {
+
+                //TODO check if valid
+
+            } else if (session.getCookies().read("state") != null && parms.get("code") != null) {
+                // Check if a State and a Code have been given to the User.
+                if (parms.get("state") != null) {
+                    // Check for an CSRF exploit.
+                    if (checkForCSRF(parms.get("state"), session)) {
+                            //TODO check if valid
+                    } else {
+                        isLoggedin = false;
+                        loginFailed = true;
+                    }
                 } else {
                     isLoggedin = false;
-                    loginFailed = true;
                 }
+            } else {
+                isLoggedin = false;
             }
-        } else if (isLoggedin && parms.get("logout") != null) {
+        }
+
+        if (isLoggedin && parms.get("logout") != null && !parms.get("logout").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})")) {
             if (parms.get("logout").equalsIgnoreCase("confirm")) {
                 if (sqlWorker.getAuthToken(getGuildID(session)).equalsIgnoreCase(getAuthToken(session))) {
                     sqlWorker.deleteAuthToken(getGuildID(session));
                 }
                 session.getCookies().delete("ree6_login");
                 isLoggedin = false;
-                logoutSucess = true;
+                logoutSuccess = true;
             }
-        } else if (isLoggedin && parms.get("name") != null && parms.get("value") != null) {
+        } else if (isLoggedin && parms.get("name") != null && parms.get("value") != null && !parms.get("name").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})") && !parms.get("value").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})")) {
             sqlWorker.setSetting(getGuildID(session), parms.get("name"), parms.get("value"));
-        } else if (isLoggedin && parms.get("welcomemessage") != null) {
+        } else if (isLoggedin && parms.get("welcomemessage") != null  && !parms.get("welcomemessage").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})")) {
             String message = replaceHTMLEncoding(parms.get("welcomemessage"));
             if (message.length() < 250) {
                 sqlWorker.setMessage(getGuildID(session), message);
             }
-        } else if (isLoggedin && parms.get("addwords") != null) {
+        } else if (isLoggedin && parms.get("addwords") != null && !parms.get("addwords").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})")) {
             String words = replaceHTMLEncoding(parms.get("addwords"));
 
             if (words.contains(",")) {
@@ -136,10 +204,10 @@ public class Main extends NanoHTTPD {
             } else {
                 Main.sqlWorker.addChatProtector(getGuildID(session), words);
             }
-        } else if (isLoggedin && parms.get("removeword") != null) {
+        } else if (isLoggedin && parms.get("removeword") != null && !parms.get("removeword").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})")) {
             String word = replaceHTMLEncoding(parms.get("removeword"));
             Main.sqlWorker.removeChatProtector(getGuildID(session), word);
-        } else if (isLoggedin && parms.get("setprefix") != null) {
+        } else if (isLoggedin && parms.get("setprefix") != null && !parms.get("setprefix").matches("('(''|[^'])*')|(\\)\\;)|(--)|(ALTER|CREATE|DELETE|DROP|EXEC(UTE){0,1}|INSERT( +INTO){0,1}|MERGE|SELECT|UPDATE|VERSION|ORDER|UNION( +ALL){0,1})")) {
             String message = replaceHTMLEncoding(parms.get("setprefix"));
             Main.sqlWorker.setSetting(getGuildID(session), "chatprefix", message);
         }
@@ -152,7 +220,7 @@ public class Main extends NanoHTTPD {
                 "               <ul class=\"nav navbar-nav ml-auto\">\n" +
                 "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/\">Home</a></li>\n" +
                 "                  " + (isLoggedin ? "<li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"><a class=\"nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger\" href=\"/logout/?logout\">Logout</a></li>\n" : "") +
-                "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + getAvatarUrl(getDiscordID(session)) + "\" height=\"50\" width=\"50\"></li>\n" : "") +
+                "                  " + (isLoggedin ? "<li class=\"list-inline-item nav-item mx-0 mx-lg-1\" role=\"presentation\"><img class=\"rounded-circle\" src=\"" + (getCurrentUser(getCurrentToken(session)) != null ? getCurrentUser(getCurrentToken(session)).getAvatar() : "https://preview.redd.it/nx4jf8ry1fy51.gif?format=png8&s=a5d51e9aa6b4776ca94ebe30c9bb7a5aaaa265a6") + "\" height=\"50\" width=\"50\"></li>\n" : "") +
                 "                  <li class=\"nav-item mx-0 mx-lg-1\" role=\"presentation\"></li>\n" +
                 "               </ul>\n" +
                 "            </div>\n" +
@@ -160,7 +228,7 @@ public class Main extends NanoHTTPD {
                 "      </nav>\n" +
                 "      <header class=\"masthead bg-secondary text-white text-center\">\n" +
                 "         <h1>Ree6</h1>\n" +
-                "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + getUsername(getDiscordID(session)) + " !" : "The alternative to Mee6!") + "</h2>\n" +
+                "         <h2 class=\"font-weight-light mb-0\">" + (isLoggedin ? "Welcome " + (getCurrentUser(getCurrentToken(session)) != null ? getCurrentUser(getCurrentToken(session)).getUsername() : "Reload") + " !" : "The alternative to Mee6!") + "</h2>\n" +
                 "      </header>";
 
         if (loginFailed) {
@@ -401,7 +469,7 @@ public class Main extends NanoHTTPD {
 
             //Not Loggedin Page
 
-            if (logoutSucess) {
+            if (logoutSuccess) {
                 body += "<script>\n" +
                         "   alert(\"You have been logged out!\")\n" +
                         "</script>\n";
@@ -411,7 +479,9 @@ public class Main extends NanoHTTPD {
                     "        <h1 class=\"text-center text-secondary\">You aren't loggedin!<h1/>\n" +
                     "          <div class=\"container\">\n" +
                     "            <div class=\"text-center mt-4\">\n" +
-                    "               <p class=\"lead mb-4 text-center\">Please log yourself in by using the Command ree!webinterface!</p>\n" +
+                    "               <p class=\"lead mb-4 text-center\">Do you want to login?</p>\n" +
+                    "               <br  />\n"+
+                    "               <p class=\"lead mb-0\"><a class=\"btn btn-outline-light text-center\" role=\"button\" href = \"" + discordOAuth.getAuthorizationURL(getState(session)) + "\">Login with Discord!</a></p>\n" +
                     "            </div>\n" +
                     "         </div>\n" +
                     "      </section>";
@@ -420,6 +490,17 @@ public class Main extends NanoHTTPD {
         return newFixedLengthResponse(head + body + foot);
     }
 
+    /**
+     * Check if someone has been Click-jacked (someone used the CSRF exploit)
+     *
+     * @param state     The given Request State from Discord.
+     * @param session   The current Session of the User
+     *
+     * @return boolean  Returns if everything is alright
+     */
+    private boolean checkForCSRF(String state, IHTTPSession session) {
+        return session.getCookies().read("state") != null && SecurityUtil.de(session.getCookies().read("state")) != null && SecurityUtil.de(session.getCookies().read("state")).equals(state);
+    }
 
     public String getFromArray(ArrayList<String> arrayList) {
         String end = "";
@@ -442,28 +523,65 @@ public class Main extends NanoHTTPD {
 
     }
 
+    public String getState(IHTTPSession session) {
+        return (SecurityUtil.de(session.getCookies().read("state")) != null) ? decryptString(session.getCookies().read("state")) : session.getParms().get("state") != null ? session.getParms().get("state") : "0";
+    }
+
+    public String getCode(IHTTPSession session) {
+        return (SecurityUtil.de(session.getCookies().read("2oauth")) != null) ? decryptString(session.getCookies().read("2oauth")) : session.getParms().get("code") != null ? session.getParms().get("code") : "0";
+    }
+
+    public String getAuth(IHTTPSession session) {
+        return (SecurityUtil.de(session.getCookies().read("auth")) != null) ? decryptString(session.getCookies().read("auth")) : "0";
+    }
+
+    public String decryptString(String base64String) {
+        return (SecurityUtil.de(base64String) != null) ?  SecurityUtil.de(base64String) : "0";
+    }
+
+    public TokensResponse getCurrentToken(IHTTPSession session) {
+        try {
+            TokensResponse response = discordOAuth.getTokens("BqsWA9eIqbnIv6MqhLJAIzFsRgd7yV");
+
+            System.out.println(response);
+
+            response = discordOAuth.refreshTokens(response.getRefreshToken());
+            return response;
+        } catch (Exception ignore) {
+            ignore.printStackTrace();
+        }
+        return null;
+    }
+
+    public User getCurrentUser(TokensResponse response) {
+        try {
+            return new DiscordAPI(response.getAccessToken()).fetchUser();
+        } catch (Exception ignore) {}
+        return null;
+    }
+
     public String getGuildID(IHTTPSession session) {
-        return (Crypter.de(session.getCookies().read("ree6_login")) != null) ? Crypter.de(session.getCookies().read("ree6_login")).split("-")[0] != null ? Crypter.de(session.getCookies().read("ree6_login")).split("-")[0] : "0" : session.getParms().get("login") != null ? getGuildID(session.getParms().get("login")) : "0";
+        return (SecurityUtil.de(session.getCookies().read("ree6_login")) != null) ? SecurityUtil.de(session.getCookies().read("ree6_login")).split("-")[0] != null ? SecurityUtil.de(session.getCookies().read("ree6_login")).split("-")[0] : "0" : session.getParms().get("login") != null ? getGuildID(session.getParms().get("login")) : "0";
     }
 
     public String getGuildID(String base64String) {
-        return (Crypter.de(base64String) != null) ? Crypter.de(base64String).split("-")[0] != null ? Crypter.de(base64String).split("-")[0] : "0" : "0";
+        return (SecurityUtil.de(base64String) != null) ? SecurityUtil.de(base64String).split("-")[0] != null ? SecurityUtil.de(base64String).split("-")[0] : "0" : "0";
     }
 
     public String getAuthToken(IHTTPSession session) {
-        return (Crypter.de(session.getCookies().read("ree6_login")) != null) ? Crypter.de(session.getCookies().read("ree6_login")).split("-")[1].split(":")[0] != null ? Crypter.de(session.getCookies().read("ree6_login")).split("-")[1].split(":")[0] : "0" : session.getParms().get("login") != null ? getAuthToken(session.getParms().get("login")) : "0";
+        return (SecurityUtil.de(session.getCookies().read("ree6_login")) != null) ? SecurityUtil.de(session.getCookies().read("ree6_login")).split("-")[1].split(":")[0] != null ? SecurityUtil.de(session.getCookies().read("ree6_login")).split("-")[1].split(":")[0] : "0" : session.getParms().get("login") != null ? getAuthToken(session.getParms().get("login")) : "0";
     }
 
     public String getAuthToken(String base64String) {
-        return (Crypter.de(base64String) != null) ? Crypter.de(base64String).split("-")[1].split(":")[0] != null ? Crypter.de(base64String).split("-")[1].split(":")[0] : "0" : "0";
+        return (SecurityUtil.de(base64String) != null) ? SecurityUtil.de(base64String).split("-")[1].split(":")[0] != null ? SecurityUtil.de(base64String).split("-")[1].split(":")[0] : "0" : "0";
     }
 
     public String getDiscordID(IHTTPSession session) {
-        return (Crypter.de(session.getCookies().read("ree6_login")) != null) ? Crypter.de(session.getCookies().read("ree6_login")).split(":")[1] != null ? Crypter.de(session.getCookies().read("ree6_login")).split(":")[1] : "0" : session.getParms().get("login") != null ? getDiscordID(session.getParms().get("login")) : "0";
+        return (SecurityUtil.de(session.getCookies().read("ree6_login")) != null) ? SecurityUtil.de(session.getCookies().read("ree6_login")).split(":")[1] != null ? SecurityUtil.de(session.getCookies().read("ree6_login")).split(":")[1] : "0" : session.getParms().get("login") != null ? getDiscordID(session.getParms().get("login")) : "0";
     }
 
     public String getDiscordID(String base64String) {
-        return (Crypter.de(base64String) != null) ? Crypter.de(base64String).split(":")[1] != null ? Crypter.de(base64String).split(":")[1] : "0" : "0";
+        return (SecurityUtil.de(base64String) != null) ? SecurityUtil.de(base64String).split(":")[1] != null ? SecurityUtil.de(base64String).split(":")[1] : "0" : "0";
     }
 
     public static String getAvatarUrl(String userID) {
@@ -476,8 +594,15 @@ public class Main extends NanoHTTPD {
         return (js.has("username") ? js.getString("username") : "Please reload");
     }
 
-    public String replaceHTMLEncoding(String query) {
-        return query.replace("+", " ").replaceAll("%20", " ").replaceAll("%21", "!").replaceAll("%22", "\"").replaceAll("%23", "#").replaceAll("%24", "$").replace("%25", "%").replaceAll("%26", "&").replaceAll("%27", "'").replaceAll("%28", "(")
+    /**
+     * Format a given URL-Encode String to a normal String.
+     *
+     * @param string     The given URL-Encoded String
+     *
+     * @return string    Returns a URL-decoded String.
+     */
+    public String replaceHTMLEncoding(String string) {
+        return string.replace("+", " ").replaceAll("%20", " ").replaceAll("%21", "!").replaceAll("%22", "\"").replaceAll("%23", "#").replaceAll("%24", "$").replace("%25", "%").replaceAll("%26", "&").replaceAll("%27", "'").replaceAll("%28", "(")
                 .replaceAll("%29", ")").replaceAll("%2B", "+").replaceAll("%2F", "/").replaceAll("%3A", ":").replaceAll("%3B", ";").replaceAll("%3C", "<").replaceAll("%3D", "=").replaceAll("%3E", ">").replaceAll("%3F", "?").replaceAll("%40", "@")
                 .replaceAll("%5B", "[").replaceAll("%5C", "\\").replaceAll("%5D", "]").replaceAll("%5E", "^").replaceAll("%5F", "_").replaceAll("%60", "'").replaceAll("%7B", "{").replace("%7C", "-").replaceAll("%7D", "}").replaceAll("%7E", "~");
     }
